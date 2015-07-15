@@ -8,13 +8,23 @@ $(document).ready( function() {
 	});
 });
 
-// this function takes the question object returned by StackOverflow 
+$(document).ready( function() {
+	$('.inspiration-getter').submit( function(event){
+		// zero out results if previous search has run
+		$('.results').html('');
+		// get the value of the tags the user submitted
+		var tag = $(this).find("input[name='answerers']").val();
+		getInspiration(tag);
+	});
+});
+
+// this function takes the question object returned by StackOverflow
 // and creates new result to be appended to DOM
 var showQuestion = function(question) {
-	
+
 	// clone our result template code
 	var result = $('.templates .question').clone();
-	
+
 	// Set the question properties in result
 	var questionElem = result.find('.question-text a');
 	questionElem.attr('href', question.link);
@@ -41,6 +51,30 @@ var showQuestion = function(question) {
 	return result;
 };
 
+// this function takes the top answerers object returned by StackOverflow
+// and creates new result to be appended to DOM
+var showInspiration = function(item) {
+
+	// clone our result template code
+	var result = $('.templates .inspiration').clone();
+
+	// Set the inspiration properties in result
+	var inspirationElem = result.find('.name-text');
+	inspirationElem.text(item.user.display_name);
+
+	inspirationElem = result.find('.reputation');
+	inspirationElem.text(item.user.reputation);
+
+	var image = result.find('.user-image img');
+	image.attr('src', item.user.profile_image);
+
+	var link = result.find('.stack-link a');
+	link.attr('href', item.user.link);
+	link.text(item.user.display_name + " Stack Overflow profile");
+
+	return result;
+};
+
 
 // this function takes the results object from StackOverflow
 // and creates info about search results to be appended to DOM
@@ -59,13 +93,13 @@ var showError = function(error){
 // takes a string of semi-colon separated tags to be searched
 // for on StackOverflow
 var getUnanswered = function(tags) {
-	
+
 	// the parameters we need to pass in our request to StackOverflow's API
 	var request = {tagged: tags,
 								site: 'stackoverflow',
 								order: 'desc',
 								sort: 'creation'};
-	
+
 	var result = $.ajax({
 		url: "http://api.stackexchange.com/2.2/questions/unanswered",
 		data: request,
@@ -83,6 +117,42 @@ var getUnanswered = function(tags) {
 		});
 	})
 	.fail(function(jqXHR, error, errorThrown){
+		var errorElem = showError(error);
+		$('.search-results').append(errorElem);
+	});
+};
+
+// takes a tag to be searched
+// for on StackOverflow
+var getInspiration = function(tag) {
+	console.log("Inspiration text: " + tag );
+
+	// the parameters we need to pass in our request to StackOverflow's API
+	var request = {tagged: tag,
+								site: 'stackoverflow',
+								order: 'desc',
+								sort: 'creation'};
+
+	var result = $.ajax({
+		url: "http://api.stackexchange.com/2.2/tags/" + tag + "/top-answerers/all_time",
+		data: request,
+		dataType: "jsonp",
+		type: "GET",
+		})
+	.done(function(result){
+		console.log("AJAX SUCCESS");
+		console.log(result);
+		var searchResults = showSearchResults(request.tagged, result.items.length);
+
+		$('.search-results').html(searchResults);
+
+		$.each(result.items, function(i, item) {
+			var question = showInspiration(item);
+			$('.results').append(question);
+		});
+	})
+	.fail(function(jqXHR, error, errorThrown){
+		console.log("AJAX FAIL");
 		var errorElem = showError(error);
 		$('.search-results').append(errorElem);
 	});
